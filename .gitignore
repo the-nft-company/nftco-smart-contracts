@@ -1,0 +1,7 @@
+## Custom stuff at top
+.devbox
+.gradle
+.idea
+.vagrant
+build/
+out/
