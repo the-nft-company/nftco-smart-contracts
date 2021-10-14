@@ -5,6 +5,7 @@ pub contract TenantService: NonFungibleToken {
 
     // basic data about the tenant
     pub let version: UInt32
+    pub let id: String
     pub let name: String
     pub let description: String
     pub var closed: Bool
@@ -58,6 +59,7 @@ pub contract TenantService: NonFungibleToken {
     pub event Deposit(id: UInt64, to: Address?)
 
     init(
+        tenantId: String,
         tenantName: String,
         tenantDescription: String,
         ADMIN_NFT_COLLECTION_PATH: StoragePath,
@@ -66,6 +68,7 @@ pub contract TenantService: NonFungibleToken {
         PUBLIC_NFT_COLLECTION_PATH: PublicPath
     ) {
         self.version = 1
+        self.id = tenantId
         self.name = tenantName
         self.description = tenantDescription
         self.closed = false
@@ -192,6 +195,12 @@ pub contract TenantService: NonFungibleToken {
     //
     pub fun isObjectType(_ id: UInt64, _ objectType: ObjectType): Bool {
         return (TenantService.getObjectType(id) == objectType)
+    }
+
+    // Returns the tenant id that was supplied when the contract was created
+    //
+    pub fun getTenantId(): String {
+        return self.id
     }
 
     // Returns the version of this contract
