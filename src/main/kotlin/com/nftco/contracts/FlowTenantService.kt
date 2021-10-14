@@ -1,11 +1,26 @@
-package com.nftco.contracts
+package com.nftco.core.flow
 
+import com.nftco.core.blockchain.MetadataField
+import com.nftco.core.blockchain.Tenant
 import com.nftco.core.flow.cadence.*
 import com.nftco.flow.sdk.*
 import com.nftco.flow.sdk.cadence.CadenceNamespace.Companion.ns
 import com.nftco.flow.sdk.cadence.OptionalField
+import com.nftco.flow.sdk.cadence.StringField
 import com.nftco.flow.sdk.cadence.unmarshall
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.core.io.ClassPathResource
 import java.math.BigDecimal
+
+@Configuration
+class FlowTenantServiceConfig {
+
+    @Bean
+    fun flowTenantService(flow: FlowAccessApi): FlowTenantServiceImpl {
+        return FlowTenantServiceImpl(flow = flow)
+    }
+}
 
 interface FlowTenantService {
 
@@ -15,9 +30,11 @@ interface FlowTenantService {
         adminObjectPath: String,
         privateNftCollectionPath: String,
         publicNftCollectionPath: String,
+        tenantId: String,
         tenantName: String,
         tenantDescription: String
     ): FlowId
+    fun getTenantId(address: FlowAddress): String?
     fun getTenantServiceContractVersion(address: FlowAddress): UInt?
     fun transferFlowTokensToTenant(
         params: FlowTransactionParams,
@@ -116,6 +133,7 @@ class FlowTenantServiceImpl(
         adminObjectPath: String,
         privateNftCollectionPath: String,
         publicNftCollectionPath: String,
+        tenantId: String,
         tenantName: String,
         tenantDescription: String
     ): FlowId {
@@ -132,17 +150,18 @@ class FlowTenantServiceImpl(
         ) {
             script {
                 """
-                    transaction(contractName: String, code: String, tenantName: String, tenantDescription: String) {
+                    transaction(contractName: String, code: String, tenantId: String, tenantName: String, tenantDescription: String) {
                         prepare(signer: AuthAccount) {
                             signer.contracts.add(
                                 name: contractName,
                                 code: code.utf8,
+                                tenantId: tenantId,
                                 tenantName: tenantName,
                                 tenantDescription: tenantDescription,
                                 ADMIN_NFT_COLLECTION_PATH: $adminNftCollectionPath,
                                 ADMIN_OBJECT_PATH: $adminObjectPath,
                                 PRIVATE_NFT_COLLECTION_PATH: $privateNftCollectionPath,
-                                PUBLIC_NFT_COLLECTION_PATH: $publicNftCollectionPath,
+                                PUBLIC_NFT_COLLECTION_PATH: $publicNftCollectionPath
                             )
                         }
                     }
@@ -152,12 +171,32 @@ class FlowTenantServiceImpl(
             arguments {
                 arg { string(Tenant.NFT_CONTRACT_NAME) }
                 arg { string(addressRegistry.processScript(contractCode)) }
+                arg { string(tenantId) }
                 arg { string(tenantName) }
                 arg { string(tenantDescription) }
             }
         }.send()
 
         return tx.transactionId!!
+    }
+
+    override fun getTenantId(address: FlowAddress): String? {
+        try {
+            val result = flow.simpleFlowScript {
+                script {
+                    """
+                        import TenantService from ${address.formatted}
+                        pub fun main(address: Address): String {
+                            return TenantService.getTenantId()
+                        }
+                    """.trimIndent()
+                }
+                arg { address(address.bytes) }
+            }
+            return (result.jsonCadence as StringField).value
+        } catch (e: FlowException) {
+            return null
+        }
     }
 
     override fun getTenantServiceContractVersion(address: FlowAddress): UInt? {
