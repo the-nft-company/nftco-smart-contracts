@@ -14,7 +14,6 @@ pub contract TenantService: NonFungibleToken {
     pub var totalSupply: UInt64
 
     // paths
-    access(all) let ADMIN_NFT_COLLECTION_PATH: StoragePath
     access(all) let ADMIN_OBJECT_PATH: StoragePath
     access(all) let PRIVATE_NFT_COLLECTION_PATH: StoragePath
     access(all) let PUBLIC_NFT_COLLECTION_PATH: PublicPath
@@ -62,7 +61,6 @@ pub contract TenantService: NonFungibleToken {
         tenantId: String,
         tenantName: String,
         tenantDescription: String,
-        ADMIN_NFT_COLLECTION_PATH: StoragePath,
         ADMIN_OBJECT_PATH: StoragePath,
         PRIVATE_NFT_COLLECTION_PATH: StoragePath,
         PUBLIC_NFT_COLLECTION_PATH: PublicPath
@@ -104,16 +102,15 @@ pub contract TenantService: NonFungibleToken {
         self.OBJECT_TYPE_MASK = UInt64.max << 55
         self.SEQUENCE_MASK = (UInt64.max << UInt64(9)) >> UInt64(9)
 
-        self.ADMIN_NFT_COLLECTION_PATH = ADMIN_NFT_COLLECTION_PATH
         self.ADMIN_OBJECT_PATH = ADMIN_OBJECT_PATH
         self.PRIVATE_NFT_COLLECTION_PATH = PRIVATE_NFT_COLLECTION_PATH
         self.PUBLIC_NFT_COLLECTION_PATH = PUBLIC_NFT_COLLECTION_PATH
 
         // create a collection for the admin
-        self.account.save<@ShardedCollection>(<- TenantService.createEmptyShardedCollection(numBuckets: 32), to: TenantService.ADMIN_NFT_COLLECTION_PATH)
+        self.account.save<@ShardedCollection>(<- TenantService.createEmptyShardedCollection(numBuckets: 32), to: TenantService.PRIVATE_NFT_COLLECTION_PATH)
 
         // Create a public capability for the Collection
-        self.account.link<&{CollectionPublic}>(TenantService.PUBLIC_NFT_COLLECTION_PATH, target: TenantService.ADMIN_NFT_COLLECTION_PATH)
+        self.account.link<&{CollectionPublic}>(TenantService.PUBLIC_NFT_COLLECTION_PATH, target: TenantService.PRIVATE_NFT_COLLECTION_PATH)
 
         // put the admin in storage
         self.account.save<@TenantAdmin>(<- create TenantAdmin(), to: TenantService.ADMIN_OBJECT_PATH)
